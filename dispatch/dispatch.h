@@ -22,14 +22,17 @@ namespace dispatch
         BACKGROUND = INT16_MIN
     } QUEUE_PRIORITY;
 
-    class Queue;
     typedef std::function<void ()> Functor;
     
-    std::shared_ptr<Queue> get_main_queue();
-    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY priority);
+    class QueueImpl;
+    typedef std::shared_ptr<QueueImpl> Queue;
     
+    Queue get_main_queue();
+    Queue get_queue_with_priority(QUEUE_PRIORITY priority);
+
+    void process_main_loop();
     void main_loop(Functor function);
-    void async(std::shared_ptr<Queue> queue, Functor function);
+    void async(Queue queue, Functor function);
     void exit();
 }
 

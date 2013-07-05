@@ -19,42 +19,30 @@
 
 namespace dispatch
 {
-    typedef std::function<void ()> Functor;
-    class ThreadPool;
+#pragma mark - TaskPriority
     
-#pragma mark - Task
-    class TaskPriority{
-    public:
-        friend class ThreadPool;
-        friend bool operator<(const TaskPriority&, const TaskPriority&);
+    struct TaskPriority{
+        TaskPriority(QUEUE_PRIORITY priority, Functor task) : priority(priority), task(task), timestamp(std::clock()){}
 
-        TaskPriority(QUEUE_PRIORITY priority, Functor task) : priority(priority), task(task) {}
-        
-    private:
         QUEUE_PRIORITY priority;
         Functor task;
+        std::clock_t timestamp;
     };
-
-    bool operator<(const TaskPriority& firsTask, const TaskPriority& secondTask) {
-        return firsTask.priority < secondTask.priority;
-    }
-    
 #pragma mark - Queue
-
-    class ThreadPool;
-
+    
     typedef std::function<void (Functor)> AppendTask;
     
-    class Queue {
-    public:
+    struct QueueImpl {
         QUEUE_PRIORITY priority;
         AppendTask append_task;
-        Queue(AppendTask append): append_task(append) {};
-        Queue(QUEUE_PRIORITY priority, AppendTask append) : priority(priority), append_task(append) {};
+
+        QueueImpl(AppendTask append): append_task(append) {};
+        QueueImpl(QUEUE_PRIORITY priority, AppendTask append) : priority(priority), append_task(append) {};
         
-        void add_task(Functor task);
+        typedef std::shared_ptr<TaskPriority> Task;
+        
     private:
-        Queue(){};
+        QueueImpl(){};
     };
     
 #pragma mark - ThreadPool
@@ -67,46 +55,46 @@ namespace dispatch
         
         bool stop;
         
-        std::priority_queue<std::shared_ptr<TaskPriority>> tasks;
+        std::priority_queue<QueueImpl::Task> tasks;
         
         std::mutex queue_mutex;
         std::condition_variable condition;
         
-        std::vector<std::shared_ptr<TaskPriority>> main_queue;
+        std::queue<QueueImpl::Task> main_queue;
         std::mutex main_mutex;
         std::condition_variable main_condition;
         
     private:
-        friend class Queue;
-        
+        friend class QueueImpl;
+
         std::vector<std::thread> workers;
-        std::thread main_thread;
-        
         void add_worker();
     };
     
-#pragma mark - Queue
+#pragma mark - Task comparator
     
-    void Queue::add_task(Functor task){
-        append_task(task);
+    bool operator<(const QueueImpl::Task& firsTask, const QueueImpl::Task& secondTask) {
+        if ( firsTask->priority == secondTask->priority )
+            return firsTask->timestamp > secondTask->timestamp;
+        else
+            return firsTask->priority < secondTask->priority;
     }
-        
+    
 #pragma mark - ThreadPool
     
-    void ThreadPool::add_worker(){    
+    void ThreadPool::add_worker(){
         workers.push_back(std::thread([&]{
-            std::shared_ptr<TaskPriority> task;
-            while(true)
-            {
+            QueueImpl::Task task;
+            while(true){
                 {
                     std::unique_lock<std::mutex> lock(this->queue_mutex);
-                    
+
                     while(!stop && tasks.empty())
                         condition.wait(lock);
-                    
+
                     if(stop) // exit if the pool is stopped
                         return;
-                    
+
                     task = tasks.top();
                     tasks.pop();
                 }
@@ -118,27 +106,6 @@ namespace dispatch
     ThreadPool::ThreadPool(size_t threads) : stop(false){
         for (int i = 0; i < threads; ++i)
             add_worker();
-        
-        
-        main_thread = std::thread([&]{
-            std::shared_ptr<TaskPriority> task;
-            while(true)
-            {
-                {
-                    std::unique_lock<std::mutex> lock(this->main_mutex);
-                    
-                    while(!stop && main_queue.empty())
-                        main_condition.wait(lock);
-                    
-                    if(stop) // exit if the pool is stopped
-                        return;
-                    
-                    task = main_queue.back();
-                    main_queue.pop_back();
-                }
-                task->task();
-            }
-        });
     }
     
     ThreadPool::~ThreadPool(){
@@ -148,8 +115,6 @@ namespace dispatch
         // the destructor joins all threads
         for(size_t i = 0;i<workers.size();++i)
             workers[i].join();
-        
-        main_thread.join();
     }
     
     ThreadPool* ThreadPool::instance(){
@@ -165,41 +130,47 @@ namespace dispatch
     
 #pragma mark -
     
-    std::shared_ptr<Queue> get_main_queue(){
-        return std::make_shared<Queue>([](Functor task) {
-            ThreadPool* pool = ThreadPool::instance();
-            {
-                std::unique_lock<std::mutex> lock(pool->main_mutex);
-                pool->main_queue.push_back(std::make_shared<TaskPriority>(QUEUE_PRIORITY::DEFAULT, task));
-            }
-            
-            pool->main_condition.notify_one();
+    Queue get_main_queue(){
+        return std::make_shared<QueueImpl>([](Functor task) {
+            std::unique_lock<std::mutex> lock(ThreadPool::instance()->main_mutex);
+            ThreadPool::instance()->main_queue.push(std::make_shared<TaskPriority>(QUEUE_PRIORITY::HIGH, task));
         });
     }
     
-    void main_loop(Functor function){
-        while (!ThreadPool::instance()->stop){
-            function();
+    void process_main_loop(){
+        ThreadPool* pool = ThreadPool::instance();
+        std::unique_lock<std::mutex> lock(pool->main_mutex);
+        while (!pool->main_queue.empty()){
+            QueueImpl::Task task = pool->main_queue.front();
+            pool->main_queue.pop();
+            task->task();
         }
     }
 
-    void async(std::shared_ptr<Queue> queue, Functor function){
-        queue->add_task(function);
+    void main_loop(Functor function){
+        Queue main_queue = get_main_queue();
+        while (!ThreadPool::instance()->stop){
+            async(main_queue, function);
+            process_main_loop();
+        }
+    }
+
+    void async(Queue queue, Functor function){
+        queue->append_task(function);
     }
     
     void exit(){
         ThreadPool::instance()->stop = true;
     }
     
-    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY priority){
-        return std::make_shared<Queue>(priority, [=](Functor task) {
-            ThreadPool* pool = ThreadPool::instance();
+    Queue get_queue_with_priority(QUEUE_PRIORITY priority){
+        return std::make_shared<QueueImpl>(priority, [=](Functor task) {
             {
-                std::unique_lock<std::mutex> lock(pool->queue_mutex);
-                pool->tasks.push(std::make_shared<TaskPriority>(priority, task));
+                std::unique_lock<std::mutex> lock(ThreadPool::instance()->queue_mutex);
+                ThreadPool::instance()->tasks.push(std::make_shared<TaskPriority>(priority, task));
             }
-            
-            pool->condition.notify_one();
+
+            ThreadPool::instance()->condition.notify_one();
         });
     }
 }

@@ -25,14 +25,24 @@
                                     <action selector="onRunButtonClick:" destination="2" eventType="touchUpInside" id="cS2-Dv-cjl"/>
                                 </connections>
                             </button>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" rowHeight="44" sectionHeaderHeight="22" sectionFooterHeight="22" translatesAutoresizingMaskIntoConstraints="NO" id="Wx2-He-U1k">
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                            </tableView>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                         <constraints>
+                            <constraint firstItem="Wx2-He-U1k" firstAttribute="top" secondItem="TKA-PP-F8H" secondAttribute="bottom" constant="8" symbolic="YES" type="default" id="6YF-Gd-xpU"/>
+                            <constraint firstAttribute="bottom" secondItem="Wx2-He-U1k" secondAttribute="bottom" constant="20" symbolic="YES" type="default" id="DQH-53-iv0"/>
                             <constraint firstAttribute="trailing" secondItem="TKA-PP-F8H" secondAttribute="trailing" constant="20" symbolic="YES" type="default" id="IQh-zZ-mLE"/>
                             <constraint firstItem="TKA-PP-F8H" firstAttribute="top" secondItem="3" secondAttribute="top" constant="20" symbolic="YES" type="default" id="IfE-4Y-rwZ"/>
                             <constraint firstItem="TKA-PP-F8H" firstAttribute="leading" secondItem="3" secondAttribute="leading" constant="20" symbolic="YES" type="default" id="Qeg-9b-CS5"/>
+                            <constraint firstAttribute="trailing" secondItem="Wx2-He-U1k" secondAttribute="trailing" constant="20" symbolic="YES" type="default" id="Zp0-Kg-1nn"/>
+                            <constraint firstItem="Wx2-He-U1k" firstAttribute="leading" secondItem="3" secondAttribute="leading" constant="20" symbolic="YES" type="default" id="gT3-od-ZKD"/>
                         </constraints>
                     </view>
+                    <connections>
+                        <outlet property="tableView" destination="Wx2-He-U1k" id="FrQ-7q-UIQ"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="4" sceneMemberID="firstResponder"/>
             </objects>
@@ -46,6 +56,7 @@
             <source key="sourceIdentifier" type="project" relativePath="./Classes/ViewController.h"/>
             <relationships>
                 <relationship kind="action" name="onRunButtonClick:"/>
+                <relationship kind="outlet" name="tableView" candidateClass="UITableView"/>
             </relationships>
         </class>
     </classes>

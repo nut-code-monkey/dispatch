@@ -23,17 +23,19 @@ namespace dispatch
     } QUEUE_PRIORITY;
 
     typedef std::function<void ()> Functor;
-    
+
     class QueueImpl;
     typedef std::shared_ptr<QueueImpl> Queue;
     
     Queue get_main_queue();
     Queue get_queue_with_priority(QUEUE_PRIORITY priority);
 
-    void process_main_loop();
-    void main_loop(Functor function);
     void async(Queue queue, Functor function);
+    
     void exit();
+    void main_loop(Functor function);
+    void process_main_loop();
+    void set_main_loop_process_callback(Functor functor);
 }
 
 #endif

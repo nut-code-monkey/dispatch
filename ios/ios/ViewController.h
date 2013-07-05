@@ -10,6 +10,8 @@
 
 @interface ViewController : UIViewController
 
-- (IBAction)onRunButtonClick:(id)sender;
+-(IBAction)onRunButtonClick:(id)sender;
+
+@property (strong, nonatomic) IBOutlet UITableView *tableView;
 
 @end

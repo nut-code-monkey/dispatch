@@ -19,50 +19,16 @@
 
 @synthesize runLoopObserver;
 
-static void onRunLoop(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void* info)
+-(void)dispatchMainThread
 {
     dispatch::process_main_loop();
 }
 
-- (void)attachObservers
-{
-    if (runLoopObserver != NULL)
-        return;
-
-    CFRunLoopObserverContext context =
-    {
-        0,    // Version of this structure. Must be zero.
-        (__bridge void*)self, // Info pointer: a reference to this UpdateTimer.
-        NULL, // Retain callback for info pointer.
-        NULL, // Release callback for info pointer.
-        NULL  // Copy description.
-    };
-
-    runLoopObserver = CFRunLoopObserverCreate(NULL,
-                                              kCFRunLoopBeforeWaiting | kCFRunLoopExit, // Observe when the run loop is waiting and just before it exits.
-                                              true, // Repeats.
-                                              0, // Priority index. Use zero because there's currently no reason to do otherwise.
-                                              onRunLoop,
-                                              &context); // Copied by CFRunLoopObserverCreate, no need to pass a heap pointer.
-
-    CFRunLoopAddObserver(CFRunLoopGetCurrent(), runLoopObserver, kCFRunLoopCommonModes);
-}
-
-- (void)detachObservers
-{
-    if (runLoopObserver == NULL)
-        return;
-
-    CFRunLoopObserverInvalidate(runLoopObserver);
-    CFRelease(runLoopObserver);
-    runLoopObserver = NULL;
-}
-
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    [self attachObservers];
-    
-    // Override point for customization after application launch.
+    dispatch::set_main_loop_process_callback([=]{
+        [self performSelectorOnMainThread:@selector(dispatchMainThread) withObject:nil waitUntilDone:NO];
+    });
     return YES;
 }
 							
@@ -91,7 +57,6 @@ static void onRunLoop(CFRunLoopObserverRef observer, CFRunLoopActivity activity,
 
 - (void)applicationWillTerminate:(UIApplication *)application
 {
-    [self detachObservers];
     
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }

@@ -28,23 +28,9 @@ namespace dispatch
         const QUEUE_PRIORITY priority;
         const Function execute;
         const std::clock_t timestamp;
-    private:
-        PriorityzedTask(): priority(DEFAULT), execute(nullptr), timestamp(0){}
     };
-    
-#pragma mark - QueueImpl
-    
-    typedef std::shared_ptr<PriorityzedTask> QueueTask;
-    
-    struct QueueImpl
-    {
-        const QUEUE_PRIORITY priority;
-        
-        typedef std::function<void (Function)> AsyncRunner;
-        const AsyncRunner async;
 
-        QueueImpl(QUEUE_PRIORITY priority, AsyncRunner async) : priority(priority), async(async) {};
-    };
+    typedef std::shared_ptr<PriorityzedTask> QueueTask;
     
 #pragma mark - ThreadPool
     
@@ -70,8 +56,6 @@ namespace dispatch
     private:
         std::vector<std::thread> workers;
         void add_worker();
-    
-        friend class QueueImpl;
     };
     
 #pragma mark - QueueTask comparator
@@ -121,7 +105,7 @@ namespace dispatch
         stop = true;
         condition.notify_all();
 
-        for(size_t i = 0;i<workers.size();++i)
+        for(size_t i = 0; i < workers.size(); ++i)
             workers[i].join();
     }
     
@@ -131,7 +115,7 @@ namespace dispatch
         static ThreadPool::SharedPool instance;
         std::call_once(flag, []
         {
-            unsigned default_number_of_threads = 3;
+            unsigned default_number_of_threads = 5;
             unsigned number_of_threads = std::thread::hardware_concurrency();
             instance = std::make_shared<ThreadPool>(number_of_threads?: default_number_of_threads);
         });
@@ -140,9 +124,9 @@ namespace dispatch
     
 #pragma mark - dispatch
     
-    Queue get_main_queue()
+    std::shared_ptr<Queue> get_main_queue()
     {
-        return std::make_shared<QueueImpl>(HIGH, [](Function task)
+        return std::make_shared<Queue>(HIGH, [](Function task)
         {
             std::unique_lock<std::mutex> lock(ThreadPool::instance()->main_queue_mutex);
             ThreadPool::instance()->main_queue.push(std::make_shared<PriorityzedTask>(HIGH, task));
@@ -151,9 +135,9 @@ namespace dispatch
         });
     }
     
-    Queue get_queue_with_priority(QUEUE_PRIORITY priority)
+    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY priority)
     {
-        return std::make_shared<QueueImpl>(priority, [=](Function task)
+        return std::make_shared<Queue>(priority, [=](Function task)
         {
             {
                 std::unique_lock<std::mutex> lock(ThreadPool::instance()->mutex);
@@ -179,17 +163,12 @@ namespace dispatch
 
     void main_loop(Function function)
     {
-        Queue main_queue = get_main_queue();
+        std::shared_ptr<Queue> main_queue = get_main_queue();
         while (!ThreadPool::instance()->stop)
         {
-            async(main_queue, function);
+            main_queue->async(function);
             process_main_loop();
         }
-    }
-
-    void async(Queue queue, Function function)
-    {
-        queue->async(function);
     }
     
     void exit()

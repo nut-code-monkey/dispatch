@@ -9,7 +9,6 @@
 #ifndef __dispatch__
 #define __dispatch__
 
-#include <memory>
 #include <functional>
 
 namespace dispatch
@@ -23,15 +22,18 @@ namespace dispatch
     } QUEUE_PRIORITY;
 
     typedef std::function<void ()> Function;
-
-    struct QueueImpl;
-    typedef std::shared_ptr<QueueImpl> Queue;
     
-    Queue get_main_queue();
-    Queue get_queue_with_priority(QUEUE_PRIORITY priority);
-
-    void async(Queue queue, Function function);
+    struct Queue
+    {
+        Queue(QUEUE_PRIORITY priority, std::function<void (Function)> async) : priority(priority), async(async) {};
+        
+        const QUEUE_PRIORITY priority;
+        const std::function<void (Function)> async;
+    };
     
+    std::shared_ptr<Queue> get_main_queue();
+    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY priority);
+
     void exit();
     void main_loop(Function function);
     void process_main_loop();

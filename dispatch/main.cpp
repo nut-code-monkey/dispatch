@@ -47,7 +47,7 @@ int main(int argc, const char * argv[])
     dispatch::main_loop([]{
         std::cout << ".";
     });
-
+    
     return 0;
 }
 

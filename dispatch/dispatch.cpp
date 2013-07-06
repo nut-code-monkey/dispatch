@@ -133,7 +133,7 @@ namespace dispatch
         static ThreadPool* instance = nullptr;
         std::call_once(flag, []()
                        {
-                           int default_not_computable_value = 5;
+                           int default_not_computable_value = 3;
                            int number_of_threads = std::thread::hardware_concurrency();
                            instance = new ThreadPool(number_of_threads?: default_not_computable_value);
                        });

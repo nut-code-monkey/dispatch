@@ -12,33 +12,36 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <queue>
 
 namespace dispatch
 {
-    namespace QUEUE_PRIORITY
-    {
-        typedef long Priority;
-        Priority const HIGH = 2;
-        Priority const DEFAULT = 0;
-        Priority const LOW = (-2);
-        Priority const BACKGROUND = INT16_MIN;
-    };
-
     typedef std::function<void ()> Function;
     
     struct Queue
     {
-        Queue(QUEUE_PRIORITY::Priority priority, std::function<void (Function)> async) : priority(priority), async(async) {};
+        typedef long Priority;
         
-        const QUEUE_PRIORITY::Priority priority;
-        const std::function<void (Function)> async;
+        static std::shared_ptr<Queue> main_queue();
+        static std::shared_ptr<Queue> queue_with_priority(Priority priority);
+
+        virtual void async(Function) const;
+
+        Queue(Priority priority) : priority(priority) {};
+        const Priority priority;
     };
     
-    std::shared_ptr<Queue> get_main_queue();
-    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY::Priority priority);
+    namespace QUEUE_PRIORITY
+    {
+        Queue::Priority const HIGH = 2;
+        Queue::Priority const DEFAULT = 0;
+        Queue::Priority const LOW = (-2);
+        Queue::Priority const BACKGROUND = INT16_MIN;
+    };
     
     void exit();
     void main_loop(Function function);
+    
     void process_main_loop();
     void set_main_loop_process_callback(Function function);
 }

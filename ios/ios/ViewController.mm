@@ -19,13 +19,13 @@
 {
     for (int i = 0; i < 20; ++i)
     {
-        dispatch::get_queue_with_priority(dispatch::QUEUE_PRIORITY::HIGH)->async([=]
+        dispatch::Queue::queue_with_priority(dispatch::QUEUE_PRIORITY::HIGH)->async([=]
         {
             NSAssert(![NSThread isMainThread], nil);
             
             std::string first_string = std::to_string(i);
             
-            dispatch::get_main_queue()->async([=]
+            dispatch::Queue::main_queue()->async([=]
             {
                 NSAssert([NSThread isMainThread], nil);
                 

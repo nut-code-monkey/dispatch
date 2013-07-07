@@ -8,11 +8,11 @@
 
 #include "dispatch.h"
 
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <thread>
 #include <assert.h>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <thread>
 
 int main(int argc, const char * argv[])
 {

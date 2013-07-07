@@ -9,6 +9,8 @@
 #include "dispatch.h"
 
 #include <algorithm>
+#include <condition_variable>
+#include <ctime>
 #include <deque>
 #include <map>
 #include <mutex>
@@ -19,27 +21,22 @@
 
 namespace dispatch
 {
-#pragma mark - PriorityzedTask
-    
     struct PriorityzedTask
     {
-        PriorityzedTask(QUEUE_PRIORITY priority, Function task) : priority(priority), execute(task), timestamp(std::clock()){}
+        PriorityzedTask(QUEUE_PRIORITY::Priority priority, Function task): priority(priority), execute(task), timestamp(std::clock()){}
 
-        const QUEUE_PRIORITY priority;
+        const QUEUE_PRIORITY::Priority priority;
         const Function execute;
         const std::clock_t timestamp;
     };
 
     typedef std::shared_ptr<PriorityzedTask> QueueTask;
     
-#pragma mark - ThreadPool
-    
     struct ThreadPool
     {
         ThreadPool(unsigned number_of_threads);
-        
-        typedef std::shared_ptr<ThreadPool> SharedPool;
-        static SharedPool& instance();
+
+        static std::shared_ptr<ThreadPool>& shared_pool();
         
         virtual ~ThreadPool();
         
@@ -57,9 +54,7 @@ namespace dispatch
         std::vector<std::thread> workers;
         void add_worker();
     };
-    
-#pragma mark - QueueTask comparator
-    
+
     bool operator<(const QueueTask& firs_task, const QueueTask& second_task)
     {
         if ( firs_task->priority == second_task->priority )
@@ -67,8 +62,6 @@ namespace dispatch
         else
             return firs_task->priority < second_task->priority;
     }
-    
-#pragma mark - ThreadPool
     
     void ThreadPool::add_worker()
     {
@@ -109,62 +102,60 @@ namespace dispatch
             workers[i].join();
     }
     
-    ThreadPool::SharedPool& ThreadPool::instance()
+    std::shared_ptr<ThreadPool>& ThreadPool::shared_pool()
     {
         static std::once_flag flag;
-        static ThreadPool::SharedPool instance;
+        static std::shared_ptr<ThreadPool> shared_pool;
         std::call_once(flag, []
         {
             unsigned default_number_of_threads = 5;
             unsigned number_of_threads = std::thread::hardware_concurrency();
-            instance = std::make_shared<ThreadPool>(number_of_threads?: default_number_of_threads);
+            shared_pool = std::make_shared<ThreadPool>(number_of_threads?: default_number_of_threads);
         });
-        return instance;
+        return shared_pool;
     }
-    
-#pragma mark - dispatch
     
     std::shared_ptr<Queue> get_main_queue()
     {
-        return std::make_shared<Queue>(HIGH, [](Function task)
+        return std::make_shared<Queue>(QUEUE_PRIORITY::DEFAULT, [](Function task)
         {
-            std::unique_lock<std::mutex> lock(ThreadPool::instance()->main_queue_mutex);
-            ThreadPool::instance()->main_queue.push(std::make_shared<PriorityzedTask>(HIGH, task));
-            if (ThreadPool::instance()->main_loop_need_update != nullptr)
-                ThreadPool::instance()->main_loop_need_update();
+            auto thread_pool = ThreadPool::shared_pool();
+            std::unique_lock<std::mutex> lock(thread_pool->main_queue_mutex);
+            thread_pool->main_queue.push(std::make_shared<PriorityzedTask>(QUEUE_PRIORITY::HIGH, task));
+            if (thread_pool->main_loop_need_update != nullptr)
+                thread_pool->main_loop_need_update();
         });
     }
     
-    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY priority)
+    std::shared_ptr<Queue> get_queue_with_priority(QUEUE_PRIORITY::Priority priority)
     {
         return std::make_shared<Queue>(priority, [=](Function task)
         {
+            auto thread_pool = ThreadPool::shared_pool();
             {
-                std::unique_lock<std::mutex> lock(ThreadPool::instance()->mutex);
-                ThreadPool::instance()->priority_queue.push(std::make_shared<PriorityzedTask>(priority, task));
+                std::unique_lock<std::mutex> lock(thread_pool->mutex);
+                thread_pool->priority_queue.push(std::make_shared<PriorityzedTask>(priority, task));
             }
-            ThreadPool::instance()->condition.notify_one();
+            thread_pool->condition.notify_one();
         });
     }
     
-#pragma mark -
-    
     void process_main_loop()
     {
-        ThreadPool::SharedPool pool = ThreadPool::instance();
-        std::unique_lock<std::mutex> lock(pool->main_queue_mutex);
-        while (!pool->main_queue.empty())
+        auto thread_pool = ThreadPool::shared_pool();
+        std::unique_lock<std::mutex> lock(thread_pool->main_queue_mutex);
+        while (!thread_pool->main_queue.empty())
         {
-            QueueTask task = pool->main_queue.front();
-            pool->main_queue.pop();
+            QueueTask task = thread_pool->main_queue.front();
+            thread_pool->main_queue.pop();
             task->execute();
         }
     }
 
     void main_loop(Function function)
     {
-        std::shared_ptr<Queue> main_queue = get_main_queue();
-        while (!ThreadPool::instance()->stop)
+        auto main_queue = get_main_queue();
+        while (!ThreadPool::shared_pool()->stop)
         {
             main_queue->async(function);
             process_main_loop();
@@ -173,11 +164,11 @@ namespace dispatch
     
     void exit()
     {
-        ThreadPool::instance()->stop = true;
+        ThreadPool::shared_pool()->stop = true;
     }
     
     void set_main_loop_process_callback(Function update_callback)
     {
-        ThreadPool::instance()->main_loop_need_update = update_callback;
+        ThreadPool::shared_pool()->main_loop_need_update = update_callback;
     }
 }

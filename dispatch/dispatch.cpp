@@ -19,14 +19,13 @@
 namespace dispatch
 {
     class ThreadPool;
+
     class QueueImpl
     {
     public:
         QueueImpl();
         void addTask(Function task);
     private:
-        const std::shared_ptr<QueueImpl> queue_impl;
-        
         std::mutex mutex;
         std::queue<Function> queue;
         std::condition_variable condition;

@@ -9,7 +9,6 @@
 #ifndef __dispatch__
 #define __dispatch__
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <queue>
@@ -36,7 +35,7 @@ namespace dispatch
         Queue::Priority const HIGH = 2;
         Queue::Priority const DEFAULT = 0;
         Queue::Priority const LOW = (-2);
-        Queue::Priority const BACKGROUND = INT16_MIN;
+        Queue::Priority const BACKGROUND = (-255);
     };
     
     void exit();

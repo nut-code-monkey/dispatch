@@ -100,11 +100,6 @@ namespace dispatch
         ThreadPool::shared_pool()->queue_with_priority(priority)->addTask(task);
     };
     
-    std::shared_ptr<Queue> Queue::queue_with_priority(Priority priority)
-    {
-        return std::make_shared<Queue>(priority);
-    }
-    
     std::shared_ptr<QueueImpl> ThreadPool::add_queue_with_priority(Queue::Priority priority)
     {
         std::unique_lock<std::mutex> lock(mutex);

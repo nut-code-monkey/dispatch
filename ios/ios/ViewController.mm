@@ -12,14 +12,17 @@
 
 #import <string>
 #import <iostream>
+#import <thread>
 
 @implementation ViewController
 
 - (IBAction)onRunButtonClick:(id)sender
 {
+    std::cout << "number of threads : " << std::thread::hardware_concurrency() << std::endl;
+    
     for (int i = 0; i < 20; ++i)
     {
-        dispatch::Queue::queue_with_priority(dispatch::QUEUE_PRIORITY::HIGH)->async([=]
+        dispatch::Queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([=]
         {
             NSAssert(![NSThread isMainThread], nil);
             

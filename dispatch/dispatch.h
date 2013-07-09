@@ -22,7 +22,6 @@ namespace dispatch
         typedef long Priority;
         
         static std::shared_ptr<Queue> main_queue();
-        static std::shared_ptr<Queue> queue_with_priority(Priority priority);
 
         virtual void async(Function) const;
 

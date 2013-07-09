@@ -18,6 +18,8 @@ int main(int argc, const char * argv[])
 {
     auto main_thread_id = std::this_thread::get_id();
 
+    std::cout << "number of threads : " << std::thread::hardware_concurrency() << std::endl;
+    
     for (size_t i = 0; i < 30; ++i)
     {
         dispatch::Queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([=]

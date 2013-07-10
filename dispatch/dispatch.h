@@ -15,33 +15,33 @@
 
 namespace dispatch
 {
-    typedef std::function<void ()> Function;
-    
-    struct Queue
+    typedef std::function<void ()> function;
+
+    struct queue
     {
-        typedef long Priority;
+        typedef long priority;
+        const priority queue_priority;
+
+        static std::shared_ptr<queue> main_queue();
         
-        static std::shared_ptr<Queue> main_queue();
+        virtual void async(function) const;
 
-        virtual void async(Function) const;
-
-        Queue(Priority priority) : priority(priority) {};
-        const Priority priority;
+        queue(queue::priority priority) : queue_priority(priority) {};
     };
     
     namespace QUEUE_PRIORITY
     {
-        Queue::Priority const HIGH = 2;
-        Queue::Priority const DEFAULT = 0;
-        Queue::Priority const LOW = (-2);
-        Queue::Priority const BACKGROUND = (-255);
+        queue::priority const HIGH = 2;
+        queue::priority const DEFAULT = 0;
+        queue::priority const LOW = (-2);
+        queue::priority const BACKGROUND = (-255);
     };
     
     void exit();
-    void main_loop(Function function);
+    void main_loop(dispatch::function main_loop_function);
     
     void process_main_loop();
-    void set_main_loop_process_callback(Function function);
+    void set_main_loop_process_callback(dispatch::function callback);
 }
 
 #endif

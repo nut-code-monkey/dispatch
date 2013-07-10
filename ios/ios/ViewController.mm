@@ -22,13 +22,13 @@
     
     for (int i = 0; i < 20; ++i)
     {
-        dispatch::Queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([=]
+        dispatch::queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([=]
         {
             NSAssert(![NSThread isMainThread], nil);
             
             std::string first_string = std::to_string(i);
             
-            dispatch::Queue::main_queue()->async([=]
+            dispatch::queue::main_queue()->async([=]
             {
                 NSAssert([NSThread isMainThread], nil);
                 

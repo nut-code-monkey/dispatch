@@ -11,13 +11,9 @@
 
 @interface AppDelegate ()
 
-@property (assign, nonatomic) CFRunLoopObserverRef runLoopObserver;
-
 @end
 
 @implementation AppDelegate
-
-@synthesize runLoopObserver;
 
 -(void)dispatchMainThread
 {

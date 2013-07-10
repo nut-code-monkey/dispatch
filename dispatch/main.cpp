@@ -17,35 +17,33 @@
 int main(int argc, const char * argv[])
 {
     auto main_thread_id = std::this_thread::get_id();
-
-    std::cout << "number of threads : " << std::thread::hardware_concurrency() << std::endl;
     
-    for (size_t i = 0; i < 30; ++i)
+    for (unsigned task = 0; task < 6; ++task)
+    for (unsigned priority = 0; priority < 6; ++priority)
     {
-        dispatch::Queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([=]
+        dispatch::queue(priority).async([=]
         {
             assert(std::this_thread::get_id() != main_thread_id);
-
-            std::string first_string = std::to_string(i);
             
-            dispatch::Queue::main_queue()->async([=]
+            std::string task_string = std::to_string(task);
+            
+            std::string palceholder(1+priority*5, ' ');
+            
+            dispatch::queue::main_queue()->async([=]
             {
                 assert(std::this_thread::get_id() == main_thread_id);
                 
-                std::string second_string = std::to_string(i+1);
-                
-                std::cout << first_string << " -> " << second_string << std::endl;
+                std::cout << palceholder << task_string << std::endl;
             });
         });
     }
 
-    dispatch::Queue(dispatch::QUEUE_PRIORITY::DEFAULT).async([]
+    dispatch::queue(dispatch::QUEUE_PRIORITY::BACKGROUND).async([]
     {
-        dispatch::Queue::main_queue()->async([]
-        {
-            std::cout << "exit" << std::endl;
-            dispatch::exit();
-        });
+        std::chrono::milliseconds timespan(1); // or whatever
+        std::this_thread::sleep_for(timespan);
+        std::cout << "exit" << std::endl;
+        dispatch::exit();
     });
 
     dispatch::main_loop([]{

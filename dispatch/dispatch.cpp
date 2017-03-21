@@ -23,7 +23,7 @@ namespace dispatch
     {
         const queue::priority priority;
         std::queue<function> tasks;
-        bool is_running;
+        bool is_running = false;
         queue_impl(queue::priority priority): priority(priority){};
     };
     
@@ -33,7 +33,7 @@ namespace dispatch
         static std::shared_ptr<thread_pool>& shared_pool();
         virtual ~thread_pool();
         
-        bool stop;
+        bool stop = false;
         
         typedef std::shared_ptr<queue_impl> queue_ptr;
         
@@ -76,38 +76,34 @@ namespace dispatch
 
     void thread_pool::push_task_with_priority(const dispatch::function& task, queue::priority priority)
     {
-        {
-            std::unique_lock<std::mutex> lock(mutex);
+        std::unique_lock<std::mutex> lock(mutex);
 
-            auto queue = queues[priority];
-            if (!queue)
-            {
-                queue = std::make_shared<queue_impl>(priority);
-                queues[priority] = queue;
-            }
-            
-            queue->tasks.push(task);
-            
-            unsigned max_number_of_threads = std::max<unsigned>(std::thread::hardware_concurrency(), 2);
-            unsigned number_of_threads_required = round(log(queues.size()) + 1);
-            while (threads.size() < std::min<unsigned>(max_number_of_threads, number_of_threads_required))
-            {
-                add_worker();
-            }
+        auto queue = queues[priority];
+        if (!queue)
+        {
+            queue = std::make_shared<queue_impl>(priority);
+            queues[priority] = queue;
+        }
+        
+        queue->tasks.push(task);
+        
+        unsigned max_number_of_threads = std::max<unsigned>(std::thread::hardware_concurrency(), 2);
+        unsigned number_of_threads_required = round(log(queues.size()) + 1);
+        while (threads.size() < std::min<unsigned>(max_number_of_threads, number_of_threads_required))
+        {
+            add_worker();
         }
         condition.notify_one();
     }
     
     void thread_pool::stop_task_in_queue(const queue_ptr& queue)
     {
-        {
-            std::unique_lock<std::mutex> lock(mutex);
+        std::unique_lock<std::mutex> lock(mutex);
 
-            queue->is_running = false;
-            if ( queue->tasks.size() ==0 )
-            {
-                queues.erase(queues.find(queue->priority));
-            }
+        queue->is_running = false;
+        if ( queue->tasks.size() ==0 )
+        {
+            queues.erase(queues.find(queue->priority));
         }
         condition.notify_one();
     }
